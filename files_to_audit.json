@@ -1,0 +1,136 @@
+[
+    {
+        "project": "2025-02-thorwallet",
+        "files": [
+            "Titn.with_impls.sol",
+            "MergeTgt.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-08-gte-perps",
+        "files": [
+            "SimpleBondingCurve.with_impls.sol",
+            "Distributor.with_impls.sol",
+            "BondingCurve.with_impls.sol",
+            "GTELaunchpadV2Pair.with_impls.sol",
+            "GTELaunchpadV2PairFactory.with_impls.sol",
+            "LaunchpadLPVault.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-04-virtuals-protocol",
+        "files": [
+            "Airdrop.with_impls.sol",
+            "AgentToken.with_impls.sol",
+            "BondingTax.with_impls.sol",
+            "VirtualGenesisDAO.with_impls.sol",
+            "MockERC20.with_impls.sol",
+            "MockAgentFactoryV3.with_impls.sol",
+            "AgentInference.with_impls.sol",
+            "AgentTax.with_impls.sol",
+            "LPRefund.with_impls.sol",
+            "Bonding.with_impls.sol",
+            "AgentNftV2.with_impls.sol",
+            "TokenSaver.with_impls.sol",
+            "veVirtualToken.with_impls.sol",
+            "ServiceNft.with_impls.sol",
+            "TBABonus.with_impls.sol",
+            "FFactory.with_impls.sol",
+            "AgentVeToken.with_impls.sol",
+            "AeroAdaptor.with_impls.sol",
+            "VirtualProtocolDAO.with_impls.sol",
+            "FRouter.with_impls.sol",
+            "FERC20.with_impls.sol",
+            "EloCalculator.with_impls.sol",
+            "ContributionNft.with_impls.sol",
+            "FPair.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-02-blend",
+        "files": []
+    },
+    {
+        "project": "2025-01-liquid-ron",
+        "files": [
+            "LiquidProxy.with_impls.sol",
+            "Pausable.with_impls.sol",
+            "LiquidRon.with_impls.sol",
+            "Escrow.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-03-nudgexyz",
+        "files": []
+    },
+    {
+        "project": "2025-07-lido-finance",
+        "files": []
+    },
+    {
+        "project": "2024-12-bakerfi",
+        "files": []
+    },
+    {
+        "project": "2025-08-morpheus",
+        "files": [
+            "L1SenderV2.with_impls.sol",
+            "RewardPool.with_impls.sol",
+            "DepositPool.with_impls.sol",
+            "L2TokenReceiverV2.with_impls.sol",
+            "ChainLinkDataConsumer.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-05-blackhole",
+        "files": [
+            "AutomationCompatibleInterface.with_impls.sol",
+            "Thenian.with_impls.sol",
+            "CustomToken.with_impls.sol",
+            "WAVAX.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-06-panoptic",
+        "files": []
+    },
+    {
+        "project": "2025-01-iq-ai",
+        "files": [
+            "AIToken.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-05-upside",
+        "files": []
+    },
+    {
+        "project": "2025-03-silo-finance",
+        "files": []
+    },
+    {
+        "project": "2025-01-next-generation",
+        "files": [
+            "FeesHandlerUpgradeable.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-04-bitvault",
+        "files": []
+    },
+    {
+        "project": "2025-04-kinetiq",
+        "files": [
+            "ValidatorManager.with_impls.sol",
+            "OracleManager.with_impls.sol",
+            "StakingAccountant.with_impls.sol",
+            "KHYPE.with_impls.sol",
+            "DefaultOracle.with_impls.sol",
+            "PauserRegistry.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-04-forte",
+        "files": []
+    }
+]
