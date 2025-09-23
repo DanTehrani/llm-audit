@@ -15,6 +15,13 @@ class TargetFinding(TypedDict):
     title: str
     description: str
 
+class ContractOverview(TypedDict):
+    purpose: str
+    roles: list[str]
+    trusted_parties: list[str]
+    value_flows: list[str]
+    invariants: list[str]
+
 GPT_4O_PRICE_PER_1M_OUTPUT_TOKENS = 10;
 GPT_4O_PRICE_PER_1M_INPUT_TOKENS = 2.5;
 

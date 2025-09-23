@@ -3,7 +3,7 @@ from slither.slither import Slither
 from slither.utils.output import Contract
 from slither.core.declarations.function_contract import FunctionContract
 from openai_client import client
-from utils import O3_MINI_PRICE_PER_1M_INPUT_TOKENS, O3_MINI_PRICE_PER_1M_OUTPUT_TOKENS, print_cost, get_source_code_at
+from utils import O3_MINI_PRICE_PER_1M_INPUT_TOKENS, O3_MINI_PRICE_PER_1M_OUTPUT_TOKENS, ContractOverview, print_cost, get_source_code_at
 from utils import FunctionAuditResult
 import os
 import json
@@ -48,16 +48,28 @@ bad_descriptions = [
     Anyone can add their address to the Y.
     This may have cascading effects if other parts of the system rely on the Y.
     """
+    """
+    The function X is public and does not impose any access restrictions.
+    This creates a potential vulnerability in the system if other parts of the system rely on the Y.
+    """
 ]
 
 good_descriptions = [
     "The function X can be called by anyone. And attacker can call the function X with their address to add their address into the state variable Z. Then they can call function Y which refers to Z to execute and distribute ETH.",
+    """
+    The function X is public and does not impose any access restrictions.
+    A malicious actor could include their address in the state variable Z by calling the function X with their address.
+    The function Y will then execute and distribute the fees to Z.
+    """
 ]
 
-def get_question_prompt(function_source_code: str, questions_and_answers: str):
+def get_question_prompt(function_source_code: str, questions_and_answers: str, context: str):
     prompt = f"""
         This is a function of a smart contract.
-        You should identify is this function can be exploited by an malicious actor.
+        You should identify is this function can be exploited by an malicious actor in the following context:
+        {context}
+
+    
         Here is the function:
         {function_source_code}
 
@@ -82,7 +94,10 @@ def get_question_prompt(function_source_code: str, questions_and_answers: str):
         - reason: string
         - description: string
 
-        You should describe the issue, with a specific explanation of the vulnerability.
+        You should describe the issue, with an end-to-end specific explanation of the vulnerability.
+        Point out how exactly can the function be exploited by pointing out the exact function names, state variable names,
+        variable names, and contract names that are related to the issue end-to-end. Do NOT use vague terms like 
+        "any function that depends on the function" or "any state variable that depends on the function". Be specific.
 
         Good description:
         {chr(10).join(good_descriptions)}
@@ -98,14 +113,19 @@ def get_question_prompt(function_source_code: str, questions_and_answers: str):
         - Mistakes in the inputs of a function call
         - Not accounting for fee‐on‐transfer behavior
         - Address being maliciously set during the initialization of the contract
+
+        Most importantly, think how one could maliciously call the contract to cause unintended behavior. Ask questions
+        about the function and the contract to understand how one could maliciously call the function.
         """
 
     return prompt
 
-def get_final_answer_prompt(function_source_code: str, questions_and_answers: str):
+def get_final_answer_prompt(function_source_code: str, questions_and_answers: str, context: str):
     prompt = f"""
     This is a function of a smart contract.
-    You should identify is this function can be exploited by an malicious actor.
+    You should identify is this function can be exploited by an malicious actor in the following context:
+    {context}
+
     Here is the function:
     {function_source_code}
 
@@ -153,8 +173,8 @@ def save_qa(contract_name: str, function_name: str, questions: list[str], answer
         json.dump(qas, f, indent=4, default=str)
 
 
-async def audit_function(contract_path: str, function: FunctionContract, contract: Contract):
-    print(f"Auditing function: {function.contract_declarer.name}:{function.name}")
+async def audit_function(contract_path: str, function: FunctionContract, contract: Contract, context: str):
+    print(f"Auditing function: {function.contract_declarer.name}:{function.name} with context: {context}")
     questions: list[str] = []
     answers: list[str] = []
     
@@ -171,9 +191,9 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
         questions_and_answers = "\n".join([f"Question: {question}\nAnswer: {answer}" for question, answer in zip(questions, answers)])
 
         if len(questions) < max_questions:
-            prompt = get_question_prompt(function_source_code, questions_and_answers)
-        else:
-            prompt = get_final_answer_prompt(function_source_code, questions_and_answers)
+            prompt = get_question_prompt(function_source_code, questions_and_answers, context)
+        else:   
+            prompt = get_final_answer_prompt(function_source_code, questions_and_answers, context)
 
         model = "o3-mini"
         response = await asyncio.to_thread(
@@ -243,15 +263,56 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
 
     return result
 
+def get_contract_overview(contract_path: str, entry_point_contract: Contract):
+    with open(contract_path, "r") as f:
+        full_contract_code = f.read()
+
+    response = client.responses.create(
+        model="o3-mini",
+        instructions="You are an assistant that summarizes and explains a smart contract.",
+        input=f"""
+        Give a high level overview of the contract please.
+        Please include the followings
+        - Purpose of the contract
+        - Roles & authorities: owner, admin, governor, upgrader, pauser, minter, etc.
+        - Trusted parties/components: oracles, relayers, external protocols, multisigs, timelocks, etc.
+        - Value flows: who can move which assets, under what conditions.
+        - Mechanisms: How parts of the contract works. (list all of the mechanisms)
+        - Invariants: Expected state of the contract, or expected behavior of the contract.
+
+        The entrypoint contract is:
+        {entry_point_contract.name}
+
+        Here is the full contract code:
+        {full_contract_code}
+
+        Return in a JSON object with the following fields:
+        {{ 
+            "purpose": "string",
+            "roles": ["string"],
+            "trusted_parties": ["string"],
+            "value_flows": ["string"],
+            "mechanisms": ["string"],
+            "invariants": ["string"]
+        }}
+        """,
+    )
+
+    print_cost(response.usage, "o3-mini")
+    output = json.loads(response.output_text.replace("```json", "").replace("```", ""))
+
+    return ContractOverview(**output)
 AUDIT_FUNCTIONS = [
-    "delegate",
+    "updateImpact",
 ]
 
 async def audit_contract(contract_path: str, contract: Contract):
     print(colored(f"Auditing contract: {contract.name}", "green"))
 
-    #entry_point_functions = [f for f in contract.functions_entry_points if f.contract_declarer.name == contract.name]
-    entry_point_functions = [f for f in contract.functions_entry_points if f.name in AUDIT_FUNCTIONS]
+    contract_overview = get_contract_overview(contract_path, contract)
+
+    entry_point_functions = [f for f in contract.functions_entry_points if f.contract_declarer.name == contract.name]
+    #entry_point_functions = [f for f in contract.functions_entry_points if f.name in AUDIT_FUNCTIONS]
 
     if len(entry_point_functions) > 30:
         print(colored(f"Skipping contract: {contract.name} with {len(entry_point_functions)} functions", "blue"))
@@ -266,9 +327,17 @@ async def audit_contract(contract_path: str, contract: Contract):
     async def bounded_audit(function):
         async with sem:
             try:
-                result = await audit_function(contract_path, function, contract)
+                # Gene
+                result = await audit_function(contract_path, function, contract, "General context")
                 print(result)
                 results.append(result)
+
+                # Specific value flow context    
+                for value_flow_context in contract_overview["mechanisms"]:
+                    result = await audit_function(contract_path, function, contract, value_flow_context)
+                    print(result)
+                    results.append(result)
+
             except Exception as e:
                 print(colored(f"Error auditing function {function.name}: {e}", "red"))
                 print(e)
@@ -286,7 +355,6 @@ async def audit_contract(contract_path: str, contract: Contract):
     with open(f"{audit_result_dir}/result-{today}.json", "w") as f:
         json.dump(results, f, indent=4, default=str)
 
-
 def get_entry_point_contract(contract_path: str):
     contract_name = contract_path.split("/")[-1].replace(".with_impls.sol", "")
 
@@ -298,7 +366,8 @@ def get_entry_point_contract(contract_path: str):
 
     return None
 
-DIR_PATH = "/Users/danieltehrani/dev/repos/2025-04-virtuals-protocol/flattened_with_impls"
+#DIR_PATH = "/Users/danieltehrani/dev/repos/2025-04-virtuals-protocol/flattened_with_impls"
+DIR_PATH = "/Users/danieltehrani/dev/repos/2025-08-gte-perps/flattened_with_impls"
 
 async def audit_flattened_contract_file(file_path: str):
     contract_path = os.path.join(DIR_PATH, file_path)
@@ -310,13 +379,17 @@ async def audit_flattened_contract_file(file_path: str):
 
     await audit_contract(contract_path, entry_point_contract)
 
-"""
+
 files = os.listdir(DIR_PATH)
 for file in files:
+    if file.startswith("I"):
+        print(f"Skipping {file}")
+        continue
+
     try:
-        audit_flattened_contract_file(file)
+        asyncio.run(audit_flattened_contract_file(file))
     except Exception as e:
         print(f"Error auditing {file}: {e}")
-"""
 
-asyncio.run(audit_flattened_contract_file("AgentVeToken.with_impls.sol"))
+#asyncio.run(audit_flattened_contract_file("AgentVeToken.with_impls.sol"))
+#asyncio.run(audit_flattened_contract_file("ServiceNft.with_impls.sol"))

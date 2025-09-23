@@ -5,7 +5,8 @@ from termcolor import colored
 
 from utils import get_source_code_at
 
-REPO_PATH = "/Users/danieltehrani/dev/repos/2025-04-virtuals-protocol/flattened"
+#REPO_PATH = "/Users/danieltehrani/dev/repos/2025-04-virtuals-protocol/flattened"
+REPO_PATH = "/Users/danieltehrani/dev/repos/2025-08-gte-perps/flattened"
 files_in_flatten_repo = os.listdir(REPO_PATH)
 
 # Find a contract by name in a list of contracts
@@ -92,4 +93,8 @@ def add_impl_for_contract(flatten_contract_path: str):
 if __name__ == "__main__":
     for file in files_in_flatten_repo:
         if file.endswith(".flattened.sol"):
-            add_impl_for_contract(f"{REPO_PATH}/{file}")
+            try:
+                add_impl_for_contract(f"{REPO_PATH}/{file}")
+            except Exception as e:
+                print(f"Error adding implementations for {file}: {e}")
+                continue
