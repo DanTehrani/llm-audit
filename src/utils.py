@@ -83,6 +83,10 @@ REPOS_PATH = "./dataset"
 
 PROJECT_CONFIGS = [
     {
+        "name": "2025-01-liquid-ron",
+        "solc": "0.8.20"
+    },
+    {
         "name": "2025-02-thorwallet",
         "solc": "0.8.27"
     },
