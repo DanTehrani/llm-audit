@@ -8,7 +8,7 @@ services:
     runtime: python
     region: oregon
     buildCommand: uv sync
-    startCommand: python start.py
+    startCommand: python ./src/start.py
     autoDeploy: true
     envVars:
       - fromGroup: llm-audit
