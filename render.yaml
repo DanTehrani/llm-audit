@@ -1,0 +1,14 @@
+previews:
+  generation: automatic
+
+services:
+  - type: web
+    name: llm-audit
+    plan: starter
+    runtime: python
+    region: oregon
+    buildCommand: uv sync
+    startCommand: python start.py
+    autoDeploy: true
+    envVars:
+      - fromGroup: llm-audit
