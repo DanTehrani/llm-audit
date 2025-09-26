@@ -5,7 +5,8 @@ from slither.slither import Slither
 from slither.utils.output import Contract
 from slither.core.declarations.function_contract import FunctionContract
 from judge import judge_project
-from openai_client import client
+from lib.openai_client import client
+from lib.firebase_client import bucket
 from utils import O3_MINI_PRICE_PER_1M_INPUT_TOKENS, O3_MINI_PRICE_PER_1M_OUTPUT_TOKENS, ContractOverview, JudgeResult, ProjectToAudit, call_openai, get_env, get_latest_audit_results, get_solc_version, get_source_code_at, set_solc_version
 from utils import FunctionAuditResult
 import os
@@ -18,8 +19,6 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 import pickle
 from langfuse import observe, get_client
-#from judge import judge_project
-from firebase_client import bucket
 import itertools
 from apscheduler.schedulers.blocking import BlockingScheduler
 
@@ -654,8 +653,5 @@ def run_evals():
 
 
 if __name__ == "__main__":
-    # Run evals every day at 11:00 PM JST every day
-    sched = BlockingScheduler(timezone=ZoneInfo("Asia/Tokyo"))
-    sched.add_job(run_evals, 'cron', hour=23, minute=0, timezone=ZoneInfo("Asia/Tokyo"))
-    sched.start()
+    run_evals()
    

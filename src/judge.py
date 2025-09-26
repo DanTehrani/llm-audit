@@ -1,5 +1,5 @@
-from firebase_client import bucket
-from openai_client import client
+from lib.firebase_client import bucket
+from lib.openai_client import client
 from utils import EvalResult, FunctionAuditResult, JudgeResult, TargetFinding, TargetFindingWithSeverity, call_openai, get_env, get_latest_audit_results, get_projects
 import os
 import json

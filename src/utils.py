@@ -15,7 +15,7 @@ from openai import AsyncOpenAI
 from openai import (
     APIError, APIStatusError, APITimeoutError, APIConnectionError, RateLimitError
 )
-from openai_client import client
+from lib.openai_client import client
 
 class FunctionAuditResult(TypedDict):
     project_name: str
