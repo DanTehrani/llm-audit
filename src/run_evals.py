@@ -622,8 +622,10 @@ async def audit_project(project_path: str, projects_to_audit: list[str], project
     results = list(itertools.chain.from_iterable(results))
     return results
 
-
 def run_evals():
+    datasets = os.listdir("./dataset")
+    print(datasets)
+
     audit_id = int(datetime.now().timestamp())
     print(f"Running evals with id {audit_id}")
 
@@ -635,7 +637,7 @@ def run_evals():
     for project in projects_to_audit:
         project_name = project["project"]
 
-        if project_name != "2025-02-thorwallet" and project_name != "2025-01-liquid-ron":
+        if project_name not in datasets:
             continue
 
         audit_project_tasks.append(audit_project(f"./dataset/{project_name}/flattened_with_impls", project["files"], project_name))

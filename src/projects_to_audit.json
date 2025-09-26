@@ -42,12 +42,5 @@
             "MultiStrategyVault.with_impls.sol",
             "StrategySupplyERC4626.with_impls.sol"
         ]
-    },
-    {
-        "project": "2025-05-upside",
-        "files": [
-            "UpsideProtocol.with_impls.sol",
-            "UpsideMetaCoin.with_impls.sol"
-        ]
     }
 ]
