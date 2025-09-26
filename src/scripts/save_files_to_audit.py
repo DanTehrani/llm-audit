@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     for project in PROJECTS:
         try:    
-            projects_to_audit = get_files_to_audit(f"/Users/danieltehrani/dev/repos/{project}/flattened_with_impls", project)
+            projects_to_audit = get_files_to_audit(f"./dataset/{project}/flattened_with_impls", project)
             print(colored(f"Successfully found {len(projects_to_audit)} files to audit for {project}", "green"))
         except Exception as e:
             print(colored(f"Error getting files to audit for {project}: {e}", "red"))

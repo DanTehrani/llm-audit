@@ -339,18 +339,20 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
         metadata={"context": context}
     )
 
-    qas_file = "/Users/danieltehrani/dev/llm-audit/qa/Titn/transfer.json"
+    """
+    qas_file = "./qa/Titn/transfer.json"
 
     with open(qas_file, "r") as f:
         existing_qas = json.load(f)
 
     questions = [qa["question"] for qa in existing_qas]
     answers = [qa["answer"] for qa in existing_qas]
-
+    """
+    
     contract_source_code = get_source_code_at(contract_path, contract.source_mapping)
 
-    #questions: list[str] = []
-    #answers: list[str] = []
+    questions: list[str] = []
+    answers: list[str] = []
     
     max_questions = 1
 
@@ -637,7 +639,7 @@ def run_evals():
         if project_name != "2025-02-thorwallet":
             continue
 
-        audit_project_tasks.append(audit_project(f"/Users/danieltehrani/dev/repos/{project_name}/flattened_with_impls", project["files"], project_name))
+        audit_project_tasks.append(audit_project(f"./dataset/{project_name}/flattened_with_impls", project["files"], project_name))
 
     start_time = time.time()
     audit_results = asyncio.run(tqdm_asyncio.gather(*audit_project_tasks, desc="Auditing all projects", colour="green"))
