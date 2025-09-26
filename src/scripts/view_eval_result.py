@@ -1,12 +1,14 @@
-from firebase_client import bucket
+from lib.firebase_client import bucket
 from utils import get_env
 import json
 from termcolor import colored
 
-env = get_env()
+
+#env = get_env()
+env = "prod"
 
 def view_eval_result():
-    prefix = f"eval-runs-{env}/audit_results"          # folder you want to inspect
+    prefix = f"eval-runs-{env}/judge_results"          # folder you want to inspect
 
     eval_results = bucket.list_blobs(prefix=prefix)
     latest_audit_timestamp = 0
@@ -18,9 +20,11 @@ def view_eval_result():
             print(colored(f"Error parsing audit timestamp for {eval_result.name}", "red"))   
             continue
 
-    with open(f"./audits/audit-{latest_audit_timestamp}.json", "r") as f:
-        latest_audit_results = json.load(f)
+    print(latest_audit_timestamp)
+    blob = bucket.blob(f"{prefix}/judge-{latest_audit_timestamp}.json")
+    json_text = blob.download_as_text()
 
+    latest_audit_results = json.loads(json_text)
     print(json.dumps(latest_audit_results, indent=4))
 
 

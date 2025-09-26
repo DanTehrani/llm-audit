@@ -553,9 +553,8 @@ async def audit_contract(contract_path: str, contract: Contract, project_name: s
     print(colored(f"Getting contract overview took {end_get_contract_overview - start_get_contract_overview} seconds", "blue"))
 
     audit_function_tasks = []
-    for function in entry_point_functions[:1]:
-        #for value_flow_context in zip(["General context"] + contract_overview["value_flows"]):
-        for value_flow_context in zip(["General context"]):
+    for function in entry_point_functions:
+        for value_flow_context in zip(["General context"] + contract_overview["value_flows"]):
             audit_function_tasks.append(try_audit_function(contract_path, function, contract, contract_overview, value_flow_context, project_name))
 
     results: list[FunctionAuditResult] = await tqdm_asyncio.gather(*audit_function_tasks, desc=f"Auditing {contract.name}", colour="green")
@@ -636,7 +635,7 @@ def run_evals():
     for project in projects_to_audit:
         project_name = project["project"]
 
-        if project_name != "2025-02-thorwallet":
+        if project_name != "2025-02-thorwallet" and project_name != "2025-01-liquid-ron":
             continue
 
         audit_project_tasks.append(audit_project(f"./dataset/{project_name}/flattened_with_impls", project["files"], project_name))

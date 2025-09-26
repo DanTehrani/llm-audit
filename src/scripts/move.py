@@ -7,7 +7,7 @@ if __name__ == "__main__":
     print(f"Found {len(repos)} repos")
     sources_path = "/Users/danieltehrani/dev/sources"
 
-    for repo in repos[:1]:
+    for repo in repos:
         flattened_path = f"/Users/danieltehrani/dev/repos/{repo}/flattened"
         flattened_with_impls_path = f"/Users/danieltehrani/dev/repos/{repo}/flattened_with_impls"
 
