@@ -2,13 +2,14 @@ previews:
   generation: automatic
 
 services:
-  - type: web
+  - type: cron
+    schedule: "0 15 * * *"
     name: llm-audit
     plan: starter
     runtime: python
     region: oregon
     buildCommand: uv sync
-    startCommand: python ./src/start.py
+    startCommand: python ./src/run_evals.py
     autoDeploy: true
     envVars:
       - fromGroup: llm-audit

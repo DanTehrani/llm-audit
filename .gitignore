@@ -14,3 +14,4 @@ wheels/
 /qa
 /targets
 /judge_results
+/google-service-account.json

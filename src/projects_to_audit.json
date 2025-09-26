@@ -1,0 +1,53 @@
+[
+    {
+        "project": "2025-02-thorwallet",
+        "files": [
+            "Titn.with_impls.sol",
+            "MergeTgt.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-01-liquid-ron",
+        "files": [
+            "LiquidProxy.with_impls.sol",
+            "Pausable.with_impls.sol",
+            "LiquidRon.with_impls.sol",
+            "Escrow.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-03-nudgexyz",
+        "files": [
+            "NudgeCampaign.with_impls.sol",
+            "NudgeCampaignFactory.with_impls.sol",
+            "NudgePointsCampaigns.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2024-12-bakerfi",
+        "files": [
+            "MultiCommand.with_impls.sol",
+            "StrategySupplyAAVEv3.with_impls.sol",
+            "MultiStrategy.with_impls.sol",
+            "StrategySupplyBase.with_impls.sol",
+            "StrategyLeverageMorphoBlue.with_impls.sol",
+            "UseUnifiedSwapper.with_impls.sol",
+            "VaultRouter.with_impls.sol",
+            "Vault.with_impls.sol",
+            "StrategySupplyMorpho.with_impls.sol",
+            "UseIERC4626.with_impls.sol",
+            "VaultBase.with_impls.sol",
+            "StrategyLeverage.with_impls.sol",
+            "StrategyLeverageAAVEv3.with_impls.sol",
+            "MultiStrategyVault.with_impls.sol",
+            "StrategySupplyERC4626.with_impls.sol"
+        ]
+    },
+    {
+        "project": "2025-05-upside",
+        "files": [
+            "UpsideProtocol.with_impls.sol",
+            "UpsideMetaCoin.with_impls.sol"
+        ]
+    }
+]

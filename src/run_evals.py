@@ -1,10 +1,12 @@
 from asyncore import file_dispatcher
 from re import I
+from apscheduler.util import ZoneInfo
 from slither.slither import Slither
 from slither.utils.output import Contract
 from slither.core.declarations.function_contract import FunctionContract
+from judge import judge_project
 from openai_client import client
-from utils import O3_MINI_PRICE_PER_1M_INPUT_TOKENS, O3_MINI_PRICE_PER_1M_OUTPUT_TOKENS, ContractOverview, FilesToAudit, call_openai, get_solc_version, get_source_code_at, set_solc_version
+from utils import O3_MINI_PRICE_PER_1M_INPUT_TOKENS, O3_MINI_PRICE_PER_1M_OUTPUT_TOKENS, ContractOverview, JudgeResult, ProjectToAudit, call_openai, get_env, get_latest_audit_results, get_solc_version, get_source_code_at, set_solc_version
 from utils import FunctionAuditResult
 import os
 import json
@@ -16,9 +18,12 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 import pickle
 from langfuse import observe, get_client
+#from judge import judge_project
+from firebase_client import bucket
+import itertools
+from apscheduler.schedulers.blocking import BlockingScheduler
 
-
-model = "gpt-5-mini"
+model = "gpt-5-nano"
 
 async def answer_question(question: str, contract_name: str, contract_path: str, past_questions_and_answers: str = "", call_metadata: dict = None):
     with open(contract_path, "r") as f:
@@ -49,6 +54,44 @@ async def answer_question(question: str, contract_name: str, contract_path: str,
 
     return answer, response.usage
     
+async def answer_question_2(questions: list[str], contract_name: str, contract_path: str, past_questions_and_answers: str = "", call_metadata: dict = None):
+    with open(contract_path, "r") as f:
+        contract_code = f.read()
+
+    prompt = f"""
+    This is a question about the {contract_name} smart contract
+    Answer the questions. 
+    Only answer the questions, do NOT suggest any improvements, fixes, or potential vulnerabilities.
+
+    Questions:
+    {questions}
+    
+    Return your answers in the following JSON format:
+    {{
+        "answers": ["<answer1>", "<answer2>", "<answer3>"]
+    }}
+    The index of the answer should match the index of the question.
+    Only return the JSON object. Do not return any other text.
+
+    These are the past questions and answers you have answered:
+    {past_questions_and_answers}
+
+    This is the smart contract code:
+    {contract_code}
+    
+    """
+
+    response = await call_openai(
+            model=model,
+            instructions="You are a smart contract security expert.",
+            prompt=prompt,
+            metadata=call_metadata,
+        )
+
+    answers = json.loads(response.output_text.replace("```json", "").replace("```", ""))["answers"]
+
+    return answers, response.usage
+   
 
 bad_descriptions = [
     "The  function X is public and does not impose any access restrictions, allowing any actor to call it. A malicious actor could exploit this by adding arbitrary addresses (including their own) to Y. This could corrupt Y and interfere with any subsequent operations or consensus mechanisms that rely on a trusted set of Y.",
@@ -71,7 +114,7 @@ good_descriptions = [
     """
 ]
 
-def get_question_prompt(function_source_code: str, questions_and_answers: str, context: str):
+def get_question_prompt(function_source_code: str, questions_and_answers: str, context: str, contract_overview: ContractOverview):
     prompt = f"""
         You are a CONSERVATIVE vulnerability triager. You MUST NOT assume any behavior that is not directly evidenced by: 
         (a) the provided source code/AST/excerpts (with line numbers), or 
@@ -90,6 +133,9 @@ def get_question_prompt(function_source_code: str, questions_and_answers: str, c
         Rule 4 — Only One Issue Per Question:
         - Think how one could maliciously call the contract to cause unintended behavior. Ask questions
         about the function and the contract to understand how one could maliciously call the function.
+
+        The purpose of the contract is:
+        {contract_overview["purpose"]}
 
         You should identify is this function can be exploited by an malicious actor in the following context:
         {context}
@@ -137,7 +183,83 @@ def get_question_prompt(function_source_code: str, questions_and_answers: str, c
 
     return prompt
 
-def get_final_answer_prompt(function_source_code: str, questions_and_answers: str, context: str):
+def get_question_prompt_2(function_name: str, questions_and_answers: str, context: str, contract_overview: ContractOverview, contract_source_code: str):
+    prompt = f"""
+        You are a CONSERVATIVE bug triager. You MUST NOT assume any behavior that is not directly evidenced by: 
+        (a) the provided source code/AST/excerpts (with line numbers), or 
+        (b) prior Q&A provided in this prompt.
+
+        Rule 1 — Proof or Abstain:
+        - Report an issue only if you can present a concrete bug narrative that references exact functions, state vars, and code lines you have actually seen here.
+        - If any link in the chain requires info you do not have, DO NOT infer it. Instead, output exactly one targeted Question to obtain the missing fact(s).
+
+        Rule 2 — No Vague Language:
+        - Do not use "could", "might", "potentially", "if", "assume", or similar hedging. State only what is true from evidence you cite.
+
+        Rule 3 - Adversarial by Default:
+        - An external address or contract passed in via constructor/initializer or setter can be trusted by default. Do NOT assume that it might be adversarial.
+
+        Rule 4 — Only One Issue Per Question:
+        - Think how one could call the contract to cause unintended behavior. Ask questions
+        about the function and the contract to understand how one could maliciously call the function.
+
+        The purpose of the contract is:
+        {contract_overview["purpose"]}
+
+        Here is the full contract code:
+        {contract_source_code}
+
+        Audit the function:
+        {function_name}
+
+        You should identify is this function contains any bugs in the following context:
+        {context}
+    
+        Ask up to 3 questions about the contract to understand it better.
+        Ask the questions in the following JSON format:
+        {{
+            questions: ["<question1>", "<question2>", "<question3>"]
+        }}
+        Only return the JSON object. Do not return any other text.
+
+        You have already asked the following questions and got the following answers. Don't ask the same questions again:
+        {questions_and_answers}
+
+        Ask questions to
+        - Understand the expected behavior of the function
+        - Understand the function in the context of the whole contract
+        - Understand the state variables used in the function
+        - Understand the implementation of functions that are called in the function
+        - Understand the implementation of an external function called in the function
+        - Understand the cascading effects of the function
+        - Understand if an external contract can be trusted or not
+        - Confirm the findings with the code
+
+        You should describe the issue, with an end-to-end specific explanation of the vulnerability.
+        Point out how exactly can the function be exploited by pointing out the exact function names, state variable names,
+        variable names, and contract names that are related to the issue end-to-end. Do NOT use vague terms like 
+        "any function that depends on the function" or "any state variable that depends on the function". Be specific.
+
+        Good description:
+        {chr(10).join(good_descriptions)}
+
+        Bad descriptions:
+        {chr(10).join(bad_descriptions)}
+
+        Do NOT consider the followings as issues:
+        - Lack of zero address input validation
+        - Bugs as a result of private key exposure/account compromise
+        - Admin account compromise
+        - Missing event emission
+        - Mistakes in the inputs of a function call
+        - Not accounting for fee‐on‐transfer behavior
+        - Address being maliciously set during the initialization of the contract
+        """
+
+    return prompt
+
+
+def get_final_answer_prompt(function_source_code: str, questions_and_answers: str, context: str, contract_overview: ContractOverview):
     prompt = f"""
     You are a CONSERVATIVE vulnerability triager. You MUST NOT assume any behavior that is not directly evidenced by: 
     (a) the provided source code/AST/excerpts (with line numbers), or 
@@ -151,6 +273,9 @@ def get_final_answer_prompt(function_source_code: str, questions_and_answers: st
 
     Rule 3 - Adversarial by Default:
     - An external address or contract passed in via constructor/initializer or setter can be trusted by default. Do NOT assume that it might be adversarial.
+
+    The purpose of the contract is:
+    {contract_overview["purpose"]}
 
     You should identify is this function can be exploited by an malicious actor in the following context:
     {context}
@@ -208,20 +333,29 @@ def save_qa(contract_name: str, function_name: str, questions: list[str], answer
 langfuse = get_client()
 
 @observe(capture_input=False, capture_output=False)
-async def audit_function(contract_path: str, function: FunctionContract, contract: Contract, context: str):
+async def audit_function(contract_path: str, function: FunctionContract, contract: Contract, contract_overview: ContractOverview, context: str, project_name: str): 
     now = int(datetime.now().timestamp())
     langfuse.update_current_trace(session_id=f"{contract.name}-{function.name}-{now}")
     langfuse.update_current_span(
         metadata={"context": context}
     )
 
-    questions: list[str] = []
-    answers: list[str] = []
+    qas_file = "/Users/danieltehrani/dev/llm-audit/qa/Titn/transfer.json"
+
+    with open(qas_file, "r") as f:
+        existing_qas = json.load(f)
+
+    questions = [qa["question"] for qa in existing_qas]
+    answers = [qa["answer"] for qa in existing_qas]
+
+    contract_source_code = get_source_code_at(contract_path, contract.source_mapping)
+
+    #questions: list[str] = []
+    #answers: list[str] = []
     
-    max_questions = 5
+    max_questions = 1
 
     function_source_code = get_source_code_at(contract_path, function.source_mapping)
-    contract_source_code = get_source_code_at(contract_path, contract.source_mapping)
 
     total_questions_input_tokens_usage = 0
     total_questions_output_tokens_usage = 0
@@ -232,7 +366,7 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
         print(f"Auditing function {function.name} {i}/{max_questions}")
         questions_and_answers = "\n".join([f"Question: {question}\nAnswer: {answer}" for question, answer in zip(questions, answers)])
         
-        prompt = get_question_prompt(function_source_code, questions_and_answers, context, contract_source_code)
+        prompt = get_question_prompt_2(function.name, questions_and_answers, context, contract_overview, contract_source_code)
 
         call_metadata = {
             "question_index": i,
@@ -254,22 +388,24 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
         total_questions_input_tokens_usage += response.usage.input_tokens
         total_questions_output_tokens_usage += response.usage.output_tokens
 
-        question = response.output_text.split("Question:")[1].strip()
+        questions = json.loads(response.output_text.replace("```json", "").replace("```", ""))["questions"]
+
+        #question = response.output_text.split("Question:")[1].strip()
 
         start = time.time()
-        answer, qa_usage = await answer_question(question, contract.name, contract_path,  questions_and_answers, call_metadata)
+        answers, qa_usage = await answer_question_2(questions, contract.name, contract_path,  questions_and_answers, call_metadata)
         end = time.time()
         print(colored(f"Answer time: {end - start} seconds", "blue"))
 
         total_answers_input_tokens_usage += qa_usage.input_tokens
         total_answers_output_tokens_usage += qa_usage.output_tokens
 
-        answers.append(answer)
-        questions.append(question)
+        answers.extend(answers)
+        questions.extend(questions)
 
         save_qa(contract.name, function.name, questions, answers)
 
-    prompt = get_final_answer_prompt(function_source_code, questions_and_answers, context)
+    prompt = get_final_answer_prompt(function_source_code, questions_and_answers, context, contract_overview)
 
     response = await call_openai(
         model=model,
@@ -287,6 +423,7 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
     final_answer_parsed = json.loads(final_answer.replace("```json", "").replace("```", ""))
 
     result = FunctionAuditResult(
+        project_name=project_name,
         function_name=function.name,
         safe=final_answer_parsed["safe"],
         reason=final_answer_parsed["reason"],
@@ -298,12 +435,13 @@ async def audit_function(contract_path: str, function: FunctionContract, contrac
 
     return result
 
-async def try_audit_function(contract_path: str, function: FunctionContract, contract: Contract, context: str):
+async def try_audit_function(contract_path: str, function: FunctionContract, contract: Contract, contract_overview: ContractOverview, context: str, project_name: str):
     try:
-        return await audit_function(contract_path, function, contract, context)
+        return await audit_function(contract_path, function, contract, contract_overview, context, project_name)
     except Exception as e:
         print(colored(f"Error auditing function {function.name}: {e}", "red"))
         return FunctionAuditResult(
+            project_name=project_name,
             function_name=function.name,
             safe=False,
             reason=str(e),
@@ -372,50 +510,63 @@ async def get_contract_overview(contract_path: str, entry_point_contract: Contra
 
     return contract_overview
 
-AUDIT_FUNCTIONS = [
-    "claimTitn",
-]
-
 def get_entry_point_functions(contract: Contract):
     return [f for f in contract.functions_entry_points if (f.contract_declarer.name == contract.name and not f.view)]
 
-async def audit_contract(contract_path: str, contract: Contract, project_name: str):
-    if contract.name != "MergeTgt":
-        return
+def save_audit_results(results: list[FunctionAuditResult], audit_id: str):
+    print(f"Saving {len(results)} audit results")
 
+    file_name = f"result-{audit_id}.json"
+    # Save to local file
+    audit_result_dir = f"./audits/"
+    os.makedirs(audit_result_dir, exist_ok=True)
+
+    file_name = f"audit-{audit_id}.json"
+    with open(f"{audit_result_dir}/{file_name}", "w") as f:
+        json.dump(results, f, indent=4, default=str)
+
+
+    blob = bucket.blob(f"eval-runs-{get_env()}/audit_results/{file_name}")
+    blob.upload_from_filename(f"{audit_result_dir}/{file_name}", content_type="application/json")
+
+
+def save_judge_results(results: list[JudgeResult], audit_id: str):
+    judge_results_dir = f"./judge_results/"
+    os.makedirs(judge_results_dir, exist_ok=True)
+
+    print(f"Saving {len(results)} judge results")
+    file_name = f"judge-{audit_id}.json"
+    with open(f"{judge_results_dir}/{file_name}", "w") as f:
+        json.dump(results, f, indent=4, default=str)
+
+    blob = bucket.blob(f"eval-runs-{get_env()}/judge_results/{file_name}")
+    blob.upload_from_filename(f"{judge_results_dir}/{file_name}", content_type="application/json")
+
+
+async def audit_contract(contract_path: str, contract: Contract, project_name: str):
     entry_point_functions = get_entry_point_functions(contract)
-    entry_point_functions = [f for f in entry_point_functions if f.name in AUDIT_FUNCTIONS]
 
     start_get_contract_overview = time.time()
     contract_overview = await get_contract_overview(contract_path, contract)
     end_get_contract_overview = time.time()
     print(colored(f"Getting contract overview took {end_get_contract_overview - start_get_contract_overview} seconds", "blue"))
 
-    print(f"{len(contract_overview['mechanisms'])} mechanisms identified")
-    
     audit_function_tasks = []
-    for function in entry_point_functions:
-        for value_flow_context in zip(["General context"] + contract_overview["mechanisms"]):
-        #for value_flow_context in  ["General context"]:
-            audit_function_tasks.append(try_audit_function(contract_path, function, contract, value_flow_context))
+    for function in entry_point_functions[:1]:
+        #for value_flow_context in zip(["General context"] + contract_overview["value_flows"]):
+        for value_flow_context in zip(["General context"]):
+            audit_function_tasks.append(try_audit_function(contract_path, function, contract, contract_overview, value_flow_context, project_name))
 
     results: list[FunctionAuditResult] = await tqdm_asyncio.gather(*audit_function_tasks, desc=f"Auditing {contract.name}", colour="green")
 
-    results_unique_functions = []
+    results_unique_functions: list[FunctionAuditResult] = []
     for entry_point_function in entry_point_functions:
         function_results = [result for result in results if result["function_name"] == entry_point_function.name]
         unsafe_function_results = [result for result in function_results if not result["safe"]]
         if len(unsafe_function_results) > 0:
-            results_unique_functions.append(unsafe_function_results[0])
+            results_unique_functions.extend(unsafe_function_results)
     
-    # Save audit results to file
-    audit_result_dir = f"./audits/{project_name}/{contract.name}"
-    os.makedirs(audit_result_dir, exist_ok=True)
-
-    now = int(datetime.now().timestamp())
-
-    with open(f"{audit_result_dir}/result-{now}.json", "w") as f:
-        json.dump(results_unique_functions, f, indent=4, default=str)
+    return results_unique_functions
 
 
 def get_entry_point_contract(contract_path: str, project_name: str):
@@ -438,10 +589,7 @@ def get_entry_point_contract(contract_path: str, project_name: str):
 
     return None
 
-#DIR_PATH = "/Users/danieltehrani/dev/repos/2025-04-virtuals-protocol/flattened_with_impls"
-#DIR_PATH = "/Users/danieltehrani/dev/repos/2025-08-gte-perps/flattened_with_impls"
-
-async def audit_flattened_contract_file(project_path: str, file_path: str, project_name: str):
+async def audit_flattened_contract_file(project_path: str, file_path: str, project_name: str) -> list[FunctionAuditResult]:
     contract_path = os.path.join(project_path, file_path)
     entry_point_contract = get_entry_point_contract(contract_path, project_name)
 
@@ -449,33 +597,65 @@ async def audit_flattened_contract_file(project_path: str, file_path: str, proje
         raise Exception(f"No entry point contract found for {contract_path}")
 
     try:
-        await audit_contract(contract_path, entry_point_contract, project_name)
+        return await audit_contract(contract_path, entry_point_contract, project_name)
     except Exception as e:
         print(colored(f"Error auditing {contract_path}: {e}", "red"))
-        print(e)
+        return []
 
+async def judge_all_projects(audit_results: list[FunctionAuditResult]):
+    projects = list(set([audit_result["project_name"] for audit_result in audit_results]))
+    judge_tasks = []
+    for project in projects:
+        project_audit_results = [audit_result for audit_result in audit_results if audit_result["project_name"] == project]
+        judge_tasks.append(judge_project(project_audit_results, project))
 
-async def eval_project(project_path: str, files_to_audit: list[str], project_name: str):
+    judge_results = await tqdm_asyncio.gather(*judge_tasks, desc="Judging all projects", colour="green")
+    judge_results = list(itertools.chain.from_iterable(judge_results))
+    return judge_results
+
+async def audit_project(project_path: str, projects_to_audit: list[str], project_name: str) -> list[FunctionAuditResult]:
     audit_function_tasks = []
-    for file in files_to_audit:
+    for file in projects_to_audit:
         audit_function_tasks.append(audit_flattened_contract_file(project_path, file, project_name))
 
-    await tqdm_asyncio.gather(*audit_function_tasks, desc=f"Auditing {project_name}", colour="green")
+    results = await tqdm_asyncio.gather(*audit_function_tasks, desc=f"Auditing {project_name}", colour="green")
+    results = list(itertools.chain.from_iterable(results))
+    return results
 
-if __name__ == "__main__":
-    files_to_audit: list[FilesToAudit] = json.load(open("./files_to_audit.json", "r"))
 
-    eval_project_tasks = [] 
-    for project in files_to_audit:
+def run_evals():
+    audit_id = int(datetime.now().timestamp())
+    print(f"Running evals with id {audit_id}")
+
+    # Get all contract files to audit
+    projects_to_audit: list[ProjectToAudit] = json.load(open("./src/projects_to_audit.json", "r"))
+
+    # Audit all projects concurrently
+    audit_project_tasks = [] 
+    for project in projects_to_audit:
         project_name = project["project"]
 
         if project_name != "2025-02-thorwallet":
             continue
 
-        eval_project_tasks.append(eval_project(f"/Users/danieltehrani/dev/repos/{project_name}/flattened_with_impls", project["files"], project_name))
+        audit_project_tasks.append(audit_project(f"/Users/danieltehrani/dev/repos/{project_name}/flattened_with_impls", project["files"], project_name))
 
     start_time = time.time()
-    asyncio.run(tqdm_asyncio.gather(*eval_project_tasks, desc="Auditing all projects", colour="green"))
+    audit_results = asyncio.run(tqdm_asyncio.gather(*audit_project_tasks, desc="Auditing all projects", colour="green"))
+    audit_results = list(itertools.chain.from_iterable(audit_results))
     end_time = time.time()
+
     print(colored(f"Auditing all projects took {end_time - start_time} seconds", "green"))
 
+    save_audit_results(audit_results, audit_id)
+
+    judge_results = asyncio.run(judge_all_projects(audit_results))
+    save_judge_results(judge_results, audit_id)
+
+
+if __name__ == "__main__":
+    # Run evals every day at 11:00 PM JST every day
+    sched = BlockingScheduler(timezone=ZoneInfo("Asia/Tokyo"))
+    sched.add_job(run_evals, 'cron', hour=23, minute=0, timezone=ZoneInfo("Asia/Tokyo"))
+    sched.start()
+   
