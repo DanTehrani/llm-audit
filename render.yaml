@@ -8,7 +8,7 @@ services:
     plan: starter
     runtime: python
     region: oregon
-    buildCommand: uv sync
+    buildCommand: uv sync && solc-select install 0.8.27
     startCommand: python ./src/run_evals.py
     autoDeploy: true
     envVars:
