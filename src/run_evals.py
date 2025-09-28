@@ -590,13 +590,13 @@ def get_entry_point_contract(contract_path: str, project_name: str):
     return None
 
 async def audit_flattened_contract_file(project_path: str, file_path: str, project_name: str) -> list[FunctionAuditResult]:
-    contract_path = os.path.join(project_path, file_path)
-    entry_point_contract = get_entry_point_contract(contract_path, project_name)
-
-    if entry_point_contract is None:
-        raise Exception(f"No entry point contract found for {contract_path}")
-
     try:
+        contract_path = os.path.join(project_path, file_path)
+        entry_point_contract = get_entry_point_contract(contract_path, project_name)
+
+        if entry_point_contract is None:
+            raise Exception(f"No entry point contract found for {contract_path}")
+
         return await audit_contract(contract_path, entry_point_contract, project_name)
     except Exception as e:
         print(colored(f"Error auditing {contract_path}: {e}", "red"))
