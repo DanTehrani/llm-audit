@@ -464,6 +464,8 @@ def save_judge_results(results: list[JudgeResult], audit_id: str):
 
 async def audit_contract(contract_path: str, contract: Contract, project_name: str):
     entry_point_function = get_entry_point_functions(contract)
+
+    # Temp code
     entry_point_functions = [function for function in entry_point_function if function.name == "withdrawRemainingTitn"]
 
     start_get_contract_overview = time.time()
