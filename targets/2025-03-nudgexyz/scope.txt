@@ -1,0 +1,7 @@
+./src/campaign/NudgeCampaign.sol
+./src/campaign/NudgeCampaignFactory.sol
+./src/campaign/NudgePointsCampaigns.sol
+./src/campaign/interfaces/IBaseNudgeCampaign.sol
+./src/campaign/interfaces/INudgeCampaign.sol
+./src/campaign/interfaces/INudgeCampaignFactory.sol
+./src/campaign/interfaces/INudgePointsCampaign.sol

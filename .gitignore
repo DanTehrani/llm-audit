@@ -12,6 +12,6 @@ wheels/
 /audits
 /reports
 /qa
-/targets
+/targets_with_html
 /judge_results
 /google-service-account.json

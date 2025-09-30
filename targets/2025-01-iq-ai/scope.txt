@@ -1,0 +1,7 @@
+./src/AIToken.sol
+./src/Agent.sol
+./src/AgentFactory.sol
+./src/AgentRouter.sol
+./src/BootstrapPool.sol
+./src/LiquidityManager.sol
+./src/TokenGovernor.sol

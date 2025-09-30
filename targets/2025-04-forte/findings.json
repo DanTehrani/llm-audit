@@ -1,0 +1,28 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] Early 72-digit adjustment in sqrt will lead to incorrect result exponent calculation",
+      "description": "The vulnerability resides in `sqrt` function. For sufficiently large numbers, `sqrt` function utilizes `Uint512` library to calculate mantissa part ( `rMan`) of sqrt of a given number. The problem is: Halving (L742) should take place before the digit adjustment (L738-L741). The result exponent will be wrong (off-by-one), which will lead to blatantly wrong calculation result."
+    },
+    {
+      "title": "[H-02] Sqrt function silently reverts the entire control flow when a packed float of 0 value is passed",
+      "description": "The `Float128::sqrt` function is used to find the square root of the given packed float. However, the implementation of `sqrt` function stops the executing when the give packed float is 0 via `stop()`. This can lead to serious issues where the code execution just stops mid-way silently reverting the control flow."
+    },
+    {
+      "title": "[H-03] Natural logarithm function silently accepts invalid non-positive inputs",
+      "description": "The natural logarithm function ( `ln()`) in the Ln.sol contract accepts negative numbers and zero as inputs without any validation, despite these inputs being mathematically invalid for logarithmic operations. This vulnerability directly contradicts fundamental mathematical principles that the Float128 library should uphold."
+    },
+    {
+      "title": "[H-04] Unwrapping while equating inside the `eq` function fails to account for the set `L_MATISSA_FLAG`",
+      "description": "The `Float128::eq` function is designed to return a boolean if the given two packed floats are equal. However, the issue lies with the way the function equates two packed floats via unwrapping. This issue renders it useless for scenarios when one of the packed float has the `L_MATISSA_FLAG` on."
+    },
+    {
+      "title": "[H-05] Precision loss in `toPackedFloat` function when mantissa is in range ( `MAX_M_DIGIT_NUMBER`, `MIN_L_DIGIT_NUMBER`)",
+      "description": "The current implementation determines the result mantissa’s size ( `M` or `L`) solely based on the `exponent`, without considering the actual number of digits in the provided mantissa ( `digitsMantissa`). This precision loss becomes especially significant when the `mantissa` is near the lower boundary of `MIN_L_DIGIT_NUMBER`."
+    },
+    {
+      "title": "[M-01] Inconsistent mantissa size auto-scaling between `packedFloat` encoding and calculations will lead to unacceptable rounding errors",
+      "description": "Library has 'mantissa size auto-scaling' rule to achieve the following: The library down scales the size of the mantissa to make sure it is as gas efficient as possible, but it up scales to make sure it keeps a minimum level of precision. However, there is a discrepancy between auto-scaling rule of encoding and other calculations."
+    }
+  ]
+}

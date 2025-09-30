@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] The calculation of `totalAssets()` could be wrong if `operatorFeeAmount > 0`, this can cause potential loss for the new depositors",
+      "description": "The fee accumulated by operator is stored in `operatorFeeAmount`. The amount is directly recorded based on the number of actual assets accumulated, not the portion of shares. The problem is, this fee is stored in the vault contract as WRON token balance together with the assets deposited by the users. Because the calculation of `totalAssets()` will also depend on the WRON token balance owned by the vault contract, the fee withdrawn by the operator can decrease the total assets in circulation. It means that the users who withdraw their funds after the operator withdraw the fee will receive less assets than the users who withdraw before the fee withdrawal."
+    },
+    {
+      "title": "[M-01] User can earn rewards by frontrunning the new rewards accumulation in Ron staking without actually delegating his tokens",
+      "description": "The Ron staking contract let us earn rewards by delegating our tokens to a validator. But you will only earn rewards on the lowest balance of the day. So if you delegate your tokens on the first day, you are going to earn 0 rewards for that day as your lowest balance was 0 on that day. This will happens with every new delegator. Now the issue with `LiquidRon` is that, there will be many users who will be depositing their tokens in it. And there is no such kind of time or amount restriction for new delegators if some people have already delegated before them. A user can earn rewards by just depositing the tokens into the `LiquidRon` by frontrunning the new rewards arrival and immediately withdraw them."
+    },
+    {
+      "title": "[M-02] Operators are unable to perform any actions due to incorrect modifier implementation",
+      "description": "The `onlyOperator` modifier in `LiquidRon` contract is intended to restrict access to specific functions to either the `owner` or `operator`. However, the modifier implementation is incorrect and will always revert when called by any address other than the owner, even if the caller is a valid operator. As a result, operators are completely unable to perform any of their intended actions."
+    }
+  ]
+}

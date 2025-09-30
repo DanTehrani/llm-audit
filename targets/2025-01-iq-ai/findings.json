@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] Adversary can win proposals with voting power as low as 4%",
+      "description": "The expected quorum for proposals is 25% of the voting power. An attacker can execute any proposal with as low as 4% of the voting power. Proposals that don’t get enough quorum are expected to fail because of that threshold, but the bug bypasses that protection by a 6.25x lower margin. Deeming High severity as a form of executing malicious proposals against expectations."
+    },
+    {
+      "title": "[M-01] Anyone can deploy a new `FraxSwapPair` with a Low fee incurring losses to the protocol",
+      "description": "When `LiquidityManager::moveLiquidity` function is called then either a new `FraxSwapPair` is created with a fee of `1%` or if a pair already exists then the liquidity is transferred to that `FraxSwapPair` but the issue is that any user can deploy this `FraxSwapPair` with fee as low as `0.01%` which can only be changed back by the owner of the `FraxSwapFactory` and if left unchecked will result in loss of fee for the protocol."
+    },
+    {
+      "title": "[M-02] Attacker can DOS liquidity migration in LiquidityManager.sol",
+      "description": "The LiquidityManager’s liquidity migration function, `moveLiquidity()` is susceptible to a DOS attack that any malicious attacker can perform. The reason for this is that `moveLiquidity()` relies on the raw ERC20 balance of the currency token held by the contract to determine the amount of agent token liquidity to add. An attacker can directly transfer extra currency tokens into the LiquidityManager, inflating the balance and causing a denial-of-service (DoS) that blocks liquidity migration."
+    },
+    {
+      "title": "[M-03] Ineffective proposal threshold validation allows setting arbitrary high values",
+      "description": "The `setProposalThresholdPercentage` function in TokenGovernor checks the wrong variable when trying to enforce the maximum 10% threshold limit. Instead of validating the new incoming value, it checks the current stored value, making the protection completely ineffective. This means anyone can propose and pass a governance proposal that sets the threshold to any value (even 100% or higher), which could effectively break the governance system."
+    }
+  ]
+}

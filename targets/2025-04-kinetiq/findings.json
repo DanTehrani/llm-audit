@@ -1,0 +1,36 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] Buffer Silently Locks Staked HYPE in Contract Without Using Them For Withdrawals Or Providing A Way To Be Pulled Out Or Moved To L1",
+      "description": "When users stake into the Staking Manager and get their KHYPE tokens, after earning some rewards they might want to queue a withdrawal to get their HYPE tokens back. While the queued withdrawal delay is on, the user can decide to `cancelWithdrawal` and get their KHYPE tokens back. The way the buffer is handled in this flow leads to locking of HYPE in the staking manager contract."
+    },
+    {
+      "title": "[H-02] Users Who Queue Withdrawal Before A Slashing Event Disadvantage Users Who Queue After And Eventually Leads To Loss Of Funds For Them",
+      "description": "Lets take the scenario where the HYPE to KHYPE exchange is `1 KHYPE = 1.5 KHYPE`. At this point, let’s assume that there are in total `50 KHYPE` tokens queued for withdrawals, that is `75 HYPE` queued for withdrawals while the remaining `20 KHYPE` are still held by their respective holders worth `30 HYPE` in all. This means that the locked in amount in the queued Withdrawals for each user across all queued withdrawals is `75 HYPE`. We know this because of the logic in the queueWithdrawal function in the StakingManager. Now let’s assume for some reason there’s a slashing event and the amount of HYPE in total reduces from `105 KHYPE` to `75 KHYPE`. Now it leaves us with an exchange ratio of `70 KHYPE` to `75 HYPE` i.e `1 KHYPE = 1.071 HYPE`. Since the guys who withdrew earlier already have their withdrawal delay processing first locked in with the ratio that was used before the slash, they all successfully confirm their withdrawal first and take the whole `75 HYPE` available, leaving 0 HYPE left for all the remaining `20 KHYPE` holders."
+    },
+    {
+      "title": "[H-03] Mishandling of receiving HYPE in the StakingManager, user can’t confirm withdrawal and inflate the exchange ratio",
+      "description": "Mishandling of receiving `HYPE` in the `StakingManager`, user can’t confirm withdrawal and inflate the exchange ratio. The problem arises when `HYPE` withdrawn from a validator on Hypercore is sent to the `StakingManager`. It will immediately trigger the `stake()` function to be called and cause the `HYPE` that should have been sent to the user who made the withdrawal to be staked back and inflate the exchange ratio."
+    },
+    {
+      "title": "[M-01] Incorrect Balance Check in Validator Redelegation Process May Block Legitimate Rebalancing Operations",
+      "description": "The `processValidatorRedelegation` function in the StakingManager contract contains an incorrect balance check that could prevent legitimate rebalancing operations from being executed. The function checks the HyperEVM balance of the StakingManager contract, but the funds being redelegated exist on HyperCore, not on the HyperEVM."
+    },
+    {
+      "title": "[M-02] Missing withdrawal pause check in confirmWithdrawal allows bypassing withdrawal restrictions",
+      "description": "The `confirmWithdrawal` function does not include the `whenWithdrawalNotPaused` modifier, despite being a withdrawal operation. This inconsistency allows users to complete their withdrawal process by calling `confirmWithdrawal()` even when withdrawals are paused by the protocol."
+    },
+    {
+      "title": "[M-03] Inconsistent State Restoration in cancelWithdrawal Function",
+      "description": "The `cancelWithdrawal` function in `StakingManager.sol` does not properly restore the contract’s internal state when a withdrawal request is canceled. This leads to inconsistent accounting of the protocol’s liquidity and pending operations."
+    },
+    {
+      "title": "[M-04] Processing all withdrawals before all deposits can cause some deposit to not be delegated in processL1Operations",
+      "description": "The way withdrawals and deposits are processed in `processL1Operations` can lead in some cases, to balance not being delegated, which ultimately reduce earned rewards from validator, making the vault less profitable than expected."
+    },
+    {
+      "title": "[M-05] Attacker can partially DoS L1 operations in StakingManager by making huge number of deposits",
+      "description": "When a user stakes in `StakingManager`, initially the funds go towards `hypeBuffer` and when it is filled, every deposit is placed in a L1 operation queue. The issue is that the whole array gets deleted, which can exceed the block gas limit if the array is big enough. An attacker can intentionally spam the queue with minimal deposits and cause a DoS."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "title": "[H-1] MergeTgt has no handling if TGT _TO_ EXCHANGE is exceeded during the exchange period",
+      "description": "MergeTgt has hardcoded amounts of TGT _TO_ EXCHANGE and TITN _ARB. Their ratio is used for rate calculation and TITN_ ARB amount of TITN is deposited to be claimed. The contract has no actual logic which would limit the deposited Tgt to MergeTgt. This means if this amount is crossed, any last claimers will not be able to do so or retrieve their Tgt back. This same vulnerability also introduces an overflow in `withdrawRemainingTitn`. Since TGT is allowed to exceed the hardcoded value, the claimable TINT exceeds the actual mergeTgt contract TITN balance."
+    },
+    {
+      "title": "[H-2] The user can send tokens to any address by using two bridge transfers, even when transfers are restricted.",
+      "description": "When `isBridgedTokensTransferLocked` is set to true, regular users’ `transfer` and `transferFrom` operations will be restricted. Regular users should not send their tokens to any address other than the `transferAllowedContract` and `lzEndpoint`. However, since bridge operations are not subject to this restriction, users can send tokens to any address by performing two bridge transfers."
+    },
+    {
+      "title": "[M-1] Improper Transfer Restrictions on Non-Bridged Tokens Due to Boolean Bridged Token Tracking, Allowing a DoS Attack Vector",
+      "description": "The `Titn.sol` contract incorrectly tracks bridged token holders using a boolean flag ( `isBridgedTokenHolder`). Once an address receives _any_ bridged tokens (via cross-chain bridging), it is permanently marked as a “bridged token holder,” subjecting **all** tokens held by that address (including non-bridged ones) to transfer restrictions. This flawed design allows malicious actors to disrupt legitimate users by sending them a trivial amount of bridged tokens, thereby locking their entire TITN balance from being transferred freely."
+    }
+  ]
+}

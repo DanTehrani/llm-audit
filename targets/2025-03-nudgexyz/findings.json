@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "title": "[M-01] Unauthorized reallocation in `NudgeCampaign::handleReallocation` and reward disruption vulnerability in `NudgeCampaign::invalidateParticipations`",
+      "description": "The `NudgeCampaign::handleReallocation` function allows any attacker to manipulate reward allocations through flash loans or repeated calls with real fund via Li.Fi’s executor. This can lead to reward depletion and disruption of legitimate user rewards even after invalidating the attacker."
+    },
+    {
+      "title": "[M-02] Anyone can DOS `handleReallocation` over and over",
+      "description": "Li.Fi’s Executor contract is granted `SWAP_CALLER_ROLE`. The function `handleReallocation` is used inside the protocol to notify about user’s reallocation and can only be called by address that has `SWAP_CALLER_ROLE`. However, the Executor contract that has as a `SWAP_CALLER_ROLE` can be used by anyone, allowing an attacker to use the `Executor` to call `renounceRole` on the `NudgeCampaignFactory` contract, causing the `Executor` to lose its `SWAP_CALLER_ROLE`."
+    },
+    {
+      "title": "[M-03] All reallocate cross-chain token and rewards will be lost for the users using the account abstraction wallet",
+      "description": "Users with account abstraction wallets have a different address across different chains for the same account, so if a user using an account abstraction wallet initiates reallocate cross-chain token, the `toToken` will be sent to the wrong address and lost permanently."
+    },
+    {
+      "title": "[M-04] Not verifying that transaction initiator is the actual participator allows malicious user to allocate full reward as Uniswap V2 pool",
+      "description": "To participate in the campaign, the user has to call the swap provider (Li.Fi) `Executor::swapAndExecute` function. However, the user can encode `NudgeCampaign::handleReallocation` calldata inside `Executor::swapAndExecute` and set arbitrary `userAddress` that doesn’t have to be the same as the swap initiator address, allowing a user to “gift” allocation to anyone."
+    }
+  ]
+}

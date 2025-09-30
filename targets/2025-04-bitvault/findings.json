@@ -1,0 +1,12 @@
+{
+  "findings": [
+    {
+      "title": "[M-01] The current implementation is incompatible with `WBTC` as collateral token",
+      "description": "The original Liquity V2 code is designed to work with collateral tokens that have 18 decimal places (WETH, rETH, wstETH). BitVault, however, intends to use WBTC and other BTC-like tokens as collateral, which only have 8 decimal places. This difference in the decimal precision introduces a lot of issues across the entire system, as many core calculations - such as collateral ratios, interest accruals, redemptions, and liquidations - are written with the assumption of 18-digit precision. The problem is systemic and scattered across many parts of the codebase. While not all instances are immediately exploitable, the cumulative effect will lead to incorrect behaviour, wrong calculations, broken incentives, and a lot of issues."
+    },
+    {
+      "title": "[M-02] Non-whitelisted owner can also hold/own a troveNFT",
+      "description": "When a user opens a trove, troveNFT is minted to owner and it requires the owner to be whitelisted i.e. non-whitelisted owners are not allowed to mint/own the troveNFT. However, this whitelist requirement can be bypassed because troveNFTs are transferable and a whitelisted owner can transfer his troveNFT to a non-whitelisted owner, bypassing the whitelist requirement."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+./contracts/src/CollateralRegistry.sol
+./contracts/src/StabilityPool.sol
+./contracts/src/BorrowerOperations.sol
+./contracts/src/AddressesRegistry.sol
+./contracts/src/Dependencies/LiquityBase.sol
+./contracts/src/TroveManager.sol

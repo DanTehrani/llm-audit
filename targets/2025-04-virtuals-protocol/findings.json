@@ -1,0 +1,119 @@
+{
+  "findings": [
+    {
+      "id": 1,
+      "title": "Lack of access control in `AgentNftV2::addValidator()` enables unauthorized validator injection and causes reward accounting inconsistencies",
+      "description": "The `AgentNftV2::addValidator()` function lacks any form of access control. While the `mint()` function of `AgentNftV2` does enforce role-based restrictions ( `MINTER_ROLE`), a malicious actor can exploit the `AgentFactoryV2::executeApplication()` logic to predict and obtain the next `virtualId` through a call to `IAgentNft(nft).nextVirtualId()`. By doing so, an attacker can preemptively call `addValidator()` and append a validator to `_validators[virtualId]`. Later, when `AgentNftV2::mint()` is called, it invokes `_addValidator()` again, causing the validator to be added a second time."
+    },
+    {
+      "id": 2,
+      "title": "Anybody can control a user’s delegate by calling `AgentVeToken.stake()` with 1 wei",
+      "description": "`AgentVeToken.stake()` function will automatically update the delegatee for the receiver. A malicious user can stake 1 wei of the LP token, set the receiver to be a user with a high balance of the veTokens, and set themselves as the delegatee."
+    },
+    {
+      "id": 3,
+      "title": "Public `ServiceNft::updateImpact` call leads to cascading issue",
+      "description": "The `ServiceNft::updateImpact` function is designed to be called via governance. However, its visibility modifier is public, allowing anyone to call it with any `virtualId`/ `proposalId`. This leads to a cascading issue where users can update the impact according to their own favor."
+    },
+    {
+      "id": 4,
+      "title": "Public `ContributionNft::mint` leads to cascading issues / loss of funds",
+      "description": "The `ContributionNft::mint` function is unguarded, allowing proposers to mint their own NFTs. This can lead to incorrect cores and model values inside the `ServiceNft::mint` function, resulting in incorrect `serviceNFT` mint."
+    },
+    {
+      "id": 5,
+      "title": "`ValidatorRegistry::validatorScore/getPastValidatorScore` allows validator to earn full rewards without actually engaging with the protocol",
+      "description": "The `ValidatorRegistry::_initValidatorScore` function initializes new validators with a base score equal to the total number of proposals that have ever existed, allowing validators to earn full rewards without actually participating in the protocol."
+    },
+    {
+      "id": 6,
+      "title": "Attacker can prevent user from executing application registered through `initFromToken()` in `AgentFactoryV4`",
+      "description": "`AgentFactoryV4` allows a user to register an agent with an existing/custom agent token. An attacker can create a new pair on Uniswap before the user calls `executeApplication()`, causing the execution to fail."
+    },
+    {
+      "id": 7,
+      "title": "Missing slippage protection on buy and sell",
+      "description": "The `sell` and `buy` functions in the `FRouter` contract lack a slippage check to ensure that the `amountOut` is not less than a certain percentage of the expected `amountOut`. Slippage occurs when the price of a token changes between the time a transaction is submitted and when it is executed."
+    },
+    {
+      "id": 8,
+      "title": "Launched tokens are vulnerable to flashloan attacks forcing premature graduation, allowing reward manipulation",
+      "description": "Bonding.sol only allows a launched memecoin to graduate when `gradThreshold` is met and enough liquidity is gained through the investor community trading. However, the implementation allows the investor community trading to be bypassed by flashloan attack."
+    },
+    {
+      "id": 9,
+      "title": "Division in `Bonding.sol._openTradingOnUniswap()` results in an incorrect `lpSupply`, higher `vaultSupply`, and dust `AgentTokens` getting locked in `FPair`",
+      "description": "When a Prototype Agent graduates to a Sentient Agent, agent tokens are minted to the `FPair` contract. The issue arises when the `lpSupply` is calculated as `tokenBalance / (10 ** token_.decimals())`, which truncates any remainder after dividing by 1 ether."
+    },
+    {
+      "id": 10,
+      "title": "BondingTax has invalid slippage implementation",
+      "description": "In BondingTax.sol, `swapForAsset` will swap `taxTokens` to `assetToken` through uniswap router. The issue is that the slippage calculation is invalid, as it is based on the actual uniswapV2pair spot price."
+    },
+    {
+      "id": 11,
+      "title": "AmountOutMin passed in as 0 in `AgentToken::_swapTax` leads to loss of funds due to slippage",
+      "description": "The `AgentToken::_swapTax` is called whenever a transfer occurs, and it passes `amountOutMin` as 0 to the Uniswap router, leading to unexpectedly high slippage."
+    },
+    {
+      "id": 12,
+      "title": "Score in `AgentDAO` is not an accurate measure and can be artificially inflated by spamming proposals",
+      "description": "In `AgentDAO._castVote()`, a user’s score is updated anytime they vote on a proposal. This is a problem because submitting a proposal is permissionless, and the default proposal threshold is 0."
+    },
+    {
+      "id": 13,
+      "title": "Functions in FERC20 can't be invoked",
+      "description": "In the `FERC20` contract, there are two functions restricted to be called only by the owner of the token: `updateMaxTx` and `excludeFromMaxTx`. However, an issue arises as the owner of the token is the `Bonding` contract, which does not expose these functions externally."
+    },
+    {
+      "id": 14,
+      "title": "Missing `totalSupply` reduction in `burnFrom` allows supply manipulation (ERC20 Violation)",
+      "description": "The `burnFrom` function in the FERC20 contract allows the owner to decrease a user’s balance but does not decrease `_totalSupply`. This breaks ERC20 compliance and causes `totalSupply()` to report incorrect values after burns."
+    },
+    {
+      "id": 15,
+      "title": "Delegation not revoked on withdrawal allows reward and voting power inflation post-maturity",
+      "description": "Stakers delegate their voting power using the `stake()` function, but the `withdraw()` function does not call `_delegate(sender, address(0))` to clean up delegations when a user fully withdraws their stake."
+    },
+    {
+      "id": 16,
+      "title": "BattleElo is at risk of underflow revert, which may DOS voting",
+      "description": "In EloCalculator.sol, the `battleElo()` function calculates a new maturity score based on a series of battle results. When calculating results of a series of battle, `battleElo` will subtract `currentRating` by the difference in rate change, which may cause underflow."
+    },
+    {
+      "id": 17,
+      "title": "VirtualGenesisDAO.sol:earlyExecute() proposals can be executed two times",
+      "description": "`earlyExecute()` allows a proposal to be executed earlier but can only be called by an account with the `EXECUTOR_ROLE`. However, it does not set the `executed` flag to true, allowing a user to call `execute()` from the `Governor.sol` abstract contract to execute the proposal again."
+    },
+    {
+      "id": 18,
+      "title": "Lack of maturity check for non-founder users allowing immediate withdrawals",
+      "description": "In the `AgentVeToken::withdraw()` function, the contract contains a check for the maturity of stakes, but this check only applies to the founding staker. There is no such lockup or maturity check for non-founder users."
+    },
+    {
+      "id": 19,
+      "title": "Founder has to double-stake during migration with the initial LP locked in the old `veToken`",
+      "description": "During the migration process implemented in AgentMigrator.sol, founders face a double-staking problem where their original LP tokens remain locked in the old AgentVeToken contract while they must provide additional virtual tokens for the migration to the new system."
+    },
+    {
+      "id": 20,
+      "title": "Using `AgentFactory::setAssetToken` will lead to loss of funds",
+      "description": "The `AgentFactory::assetToken` is initially set upon early `initialize` call. Changing this `assetToken` via `AgentFactory::setAssetToken` has serious complications that can lead to loss of funds."
+    },
+    {
+      "id": 21,
+      "title": "Precision loss in `priceALast` and `priceBLast`",
+      "description": "The price calculation functions `priceALast` and `priceBLast` use integer division directly on the pool reserves, leading to significant precision loss."
+    },
+    {
+      "id": 22,
+      "title": "Incorrect mathematical logic",
+      "description": "There is a fundamental error in the ELO calculation formula. The code calculation result deviates greatly from the standard formula."
+    },
+    {
+      "id": 23,
+      "title": "Imprecise calculations in `launchFor()` lead to less liquidity being added to the pair via the router",
+      "description": "The problem arises in the Bonding.sol’s `launchFor()` function where the `liquidity` is calculated using integer division, leading to significant precision loss."
+    }
+  ]
+}

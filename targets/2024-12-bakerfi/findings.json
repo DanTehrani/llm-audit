@@ -1,0 +1,72 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] Users may encounter losses on assets deposited through `StrategySupplyERC4626`",
+      "description": "The `_deploy()`, `_undeploy()`, and `_getBalance()` functions of `StrategySupplyERC4626` currently return the amount of shares instead of the amount of the underlying asset. This mistake leads to incorrect calculations of user assets within any BakerFi Vault that utilizes `StrategySupplyERC4626`."
+    },
+    {
+      "title": "[H-02] Anyone can call `StrategySupplyBase.harvest`, allowing users to avoid paying performance fees on interest",
+      "description": "Since `StrategySupplyBase.harvest` can be called by anyone, users can front-run the `rebalance` call or regularly call harvest to avoid paying protocol fees on interest. This allows users to receive more interest than they should."
+    },
+    {
+      "title": "[H-03] `_deployedAmount` not updated on `StrategySupplyBase.undeploy`, preventing performance fees from being collected",
+      "description": "`StrategySupplyBase.undeploy` does not update `_deployedAmount`. As a result, if a withdrawal occurs, even if interest is generated, the protocol cannot collect performance fees through `rebalance`."
+    },
+    {
+      "title": "[H-04] There are multiple issues with the decimal conversions between the vault and the strategy",
+      "description": "The `StrategyLeverage` contract has multiple incorrect decimal handling issues, causing the system to not support tokens with decimals other than 18."
+    },
+    {
+      "title": "[H-05] The implementation of `pullTokensWithPermit` poses a risk, allowing malicious actors to steal tokens",
+      "description": "In batch operations interacting with the router, users are allowed to input tokens into the router using the `permit` method. This approach may be vulnerable to frontrunning attacks, allowing malicious actors to steal the user’s tokens."
+    },
+    {
+      "title": "[H-06] Malicious actors can exploit user-approved allowances on `VaultRouter` to drain their ERC20 tokens",
+      "description": "Once a user approves `VaultRouter` to spend their ERC20 tokens, anyone could call `VaultRouter#execute()` to drain the user’s ERC20 assets."
+    },
+    {
+      "title": "[H-07] Malicious actors can exploit user-approved allowances on `VaultRouter` to drain their ERC4626 tokens",
+      "description": "Once a user approves `VaultRouter` to spend their ERC4626 shares, anyone could call `VaultRouter#execute()` to drain the user’s ERC4626 shares."
+    },
+    {
+      "title": "[M-01] `VaultBase` is not ERC4626 compliant",
+      "description": "`VaultBase` is not compliant with the must-have specs in ERC4626. This can break external integrations."
+    },
+    {
+      "title": "[M-02] New strategy can not work due to insufficient allowance",
+      "description": "When a new strategy is added through `MultiStrategy#addStrategy()`, it was not approved to spend the asset in `MultiStrategyVault`. Any functions that call `newStrategy#deploy()` may revert and result in `MultiStrategyVault` being DoS’ed."
+    },
+    {
+      "title": "[M-03] `MultiStrategy#removeStrategy()` cannot remove leverage strategies that still have deployed assets",
+      "description": "A leverage strategy with deployed assets can not be removed from `MultiStrategyVault` due to insufficient assets."
+    },
+    {
+      "title": "[M-06] Even when the Vault contract is paused, the `rebalance` function is not paused",
+      "description": "When the contract is paused, `rebalance` is not paused. While users cannot withdraw, performance fees can still be collected from interest."
+    },
+    {
+      "title": "[M-07] Depositor can bypass the `max deposit` limit",
+      "description": "Depositors can easily bypass the maximum deposit limit by specifying another recipient address than the one they are depositing from."
+    },
+    {
+      "title": "[M-11] The calculation of `assetsMax` is incorrect.",
+      "description": "In the `_undeploy` function, `assetsMax` is incorrectly calculated because the contract directly retrieves `totalSupplyAssets` and `totalSupplyShares` from `_morpho` storage without accounting for the accrued interest over time."
+    },
+    {
+      "title": "[M-12] Cannot withdraw tokens from all strategies in MultiStrategyVault when one third party is paused",
+      "description": "When even one third party integrated with MultiStrategyVault is paused, withdrawals become impossible from all Strategies."
+    },
+    {
+      "title": "[M-13] The Vault Manager is unable to delete the last strategy from `MultiStrategyVault`",
+      "description": "The `removeStrategy` function in the `MultiStrategy` contract allows the removal of a strategy and redistributes the withdrawn funds among the remaining strategies."
+    },
+    {
+      "title": "[M-14] The `StrategySupplyMorpho` allow to use wrong token in `_asset`",
+      "description": "The `StrategySupplyMorpho` is designed to supply tokens to a specific market in MorphoBlue. To achieve this, it defines a `_marketParams` structure that stores all the necessary information for the target market, including `loanToken`, which is transferred from the strategy during the `IMorpho.supply` call."
+    },
+    {
+      "title": "[M-16] `StrategySupplyBase.undeploy` does not return the amount of assets actually undeployed, which can cause a withdrawal to fail",
+      "description": "The `StrategySupplyBase.undeploy` function returns the user’s requested amount instead of the actual withdrawn asset amount. When attempting to transfer more tokens than what was actually withdrawn, the transaction will revert, preventing users from withdrawing their tokens."
+    }
+  ]
+}

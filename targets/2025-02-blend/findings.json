@@ -1,0 +1,68 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] A reserve’s `d_supply` is incorrectly updated and stored after flash loan execution",
+      "description": "Executing `contract.flash_loan(...)` will subsequently call `submit.execute_submit_with_flash_loan(...)` where the `Pool` struct is loaded with `Pool.config` assigned to the pool’s configuration and all other `Pool` fields are empty: `let mut pool = Pool::load(e)`. After that, the Reserve of the asset that will be borrowed as a flash loan is loaded - `let mut reserve = pool.load_reserve(e, &flash_loan.asset, true)`. The function `pool.load_reserve(...)` caches the Address of the asset in the array `Pool.reserves_to_store` and loads the Reserve from storage since the Reserve is not yet present in the Map `Pool.reserves`. The execute function then adds the flash loan amount as a liability for the user through `from_state.add_liabilities(e, &mut reserve, d_tokens_minted)` which will update the `d_supply` of the Reserve. However, the execute function has not cached the Reserve in `Pool.reserves` through the function `pool.cache_reserve(...)`."
+    },
+    {
+      "title": "[H-02] User can steal other users’ emissions due to vulnerable claim implementation",
+      "description": "`backstop::emissions::execute_claim` is missing `update_emissions` for `to` address which allows a user stealing other users’ emissions."
+    },
+    {
+      "title": "[H-03] Utilization ratio can exceed 100% due to missing validation in withdrawal functions",
+      "description": "The protocol implements a maximum utilization ratio check via the `require_utilization_below_max` function, which ensures that `utilization = total_liabilities / total_supply` remains below a specific threshold. However, this validation is only enforced in the `apply_borrow` function when increasing liabilities, and is critically missing from the `apply_withdraw` and `apply_withdraw_collateral` functions."
+    },
+    {
+      "title": "[M-01] Flash loans allow borrowing from frozen pools, bypassing security controls",
+      "description": "Changing a pool’s status is crucial for risk management in Blend’s lending protocol, serving as an automatic circuit breaker that responds to changing risk conditions. The three states (Active, On Ice, Frozen) are triggered based on backstop depositors’ withdrawal behavior, as these depositors provide first-loss capital and are most sensitive to risk. However, an attacker can still borrow assets by using the flash loan functionality."
+    },
+    {
+      "title": "[M-02] Invalid utilization ratio check, blocking users from submitting a flash loan",
+      "description": "Each asset in a pool has a utilization ratio, which refers to the percentage of the asset’s deposits that are currently being borrowed. A pool admin can set the max utilization ratio for each asset, which shouldn’t be bypassed; this is referred to as `max_util`. However, when submitting a flash loan, and taking that loan, the utilization ratio is checked immediately after it."
+    },
+    {
+      "title": "[M-03] If a withdrawal executes after a bad debt auction gets created, it could cause the auction to be stuck and further bad debt auctions can’t be created",
+      "description": "In a bad debt auction, if a withdrawal occurs after the auction is created, it can cause the auction to be stuck, preventing further bad debt auctions from being created."
+    },
+    {
+      "title": "[M-04] Users can create overpriced bad debt and interest auctions by providing duplicate reserves",
+      "description": "The issue is that the protocol is looping through the provided assets, grabbing the value, and scaling it to USDC. However, the issue is that it doesn’t check for duplicates. This allows anyone to create an interest auction with a very low amount of credit (lot) for a very high amount of backstop tokens (bid), easily bypassing the minimum interest value check."
+    },
+    {
+      "title": "[M-05] Missing `update_rz_emis_data` calls in `draw` and `donate` functions lead to incorrect emissions distribution",
+      "description": "The `non_queued_tokens` value is a critical component in the calculation of reward zone emissions index. While most functions that modify this value correctly call `update_rz_emis_data` before making changes, two important functions - `execute_draw` and `execute_donate` - fail to update the emissions data before modifying `non_queued_tokens`."
+    },
+    {
+      "title": "[M-06] Pools outside of the reward zone can keep receiving Blend tokens",
+      "description": "A critical invariant in the `Backstop` system is that Blend tokens should only be emitted to pools within the reward zone. However, this report highlights a flaw that allows a pool to continue receiving Blend emissions even after it has been removed from the reward zone."
+    },
+    {
+      "title": "[M-08] Removing a pool from the reward zone leads to the loss of ungulped emissions",
+      "description": "However, while removing the pool, the `remove_pool` sets the emission index to `i128::MAX` without allowing to claim the emissions via `BackstopContract::gulp_emissions` which were already distributed."
+    },
+    {
+      "title": "[M-09] When code defaults on remaining liability, it does not delete remaining auction which is problematic if the user has called fill with a `%` less than 100",
+      "description": "If the user fills with like 50%, for example, `scale_auction` only passes along like 50% of the auction data to `fill_bad_debt_auction`, the remaining 50% is stored in `remaining_auction` and stored back into `storage::set_auction`. Hence, right now the bug is that when the threshold goes below 5%, the code deletes the remaining liability by defaulting on it, but does not delete any remaining auction."
+    },
+    {
+      "title": "[M-10] Division before multiplication may cause division by zero DOS during low backstop supply",
+      "description": "Division before multiplication and unchecked oracle decimals may cause division by zero DOS during low backstop supply."
+    },
+    {
+      "title": "[M-11] Fee-vault can be made insolvent in case of defaults",
+      "description": "In case of a loan default, the backstop funds are insufficient to cover the liability. In this case, the hit is taken by the collateral providers, and the `b_rate` drops."
+    },
+    {
+      "title": "[M-12] Malicious actors can repeatedly dilute emissions to a longer timeframe",
+      "description": "This bug has been reported before in some audit’s and accepted as a Medium in such as the Infrared audit on Cantina, as well as the Loopfi July Code4rena audit."
+    },
+    {
+      "title": "[M-14] Attackers can maliciously inflate `total_supply` temporarily to exceed utilization rate limit and push the pool towards 100% util rate, potentially causing a loss of lender funds",
+      "description": "Blend pools have a utilisation rate limit that borrowers are not allowed to cross. However, a malicious user can bypass it with the following attack vector and push the pool illegally towards a 100% util rate."
+    },
+    {
+      "title": "[M-15] Edge case breaks APR cap calculation and leads to excessive fee extraction from the pool",
+      "description": "In the fee vault’s `update_rate` function, there’s an edge case that affects the calculation of target growth rate when the product of `100_000 * target_apr * time_elapsed` is less than `SECONDS_PER_YEAR` (31,536,000)."
+    }
+  ]
+}

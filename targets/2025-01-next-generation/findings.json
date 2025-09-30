@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "title": "[H-01] Cross-chain signature replay attack due to user-supplied `domainSeparator` and missing deadline check",
+      "description": "The `_verifySig` function in `Forwarder.sol` accepts the `domainSeparator` as a user-provided input instead of computing it internally. This introduces a vulnerability where signatures can be replayed across different chains if the user’s nonce matches on both chains. Additionally, there is no deadline check, meaning signatures remain valid indefinitely. This lack of expiration increases the risk of signature replay attacks and unauthorized transaction execution."
+    },
+    {
+      "title": "[M-01] ERC-20 allowance bypass: spender can force sender to pay extra fees beyond approved amount",
+      "description": "The `EURFToken` contract includes a transaction fee mechanism where a percentage of the transferred amount is deducted as a fee. This fee is deducted from the sender’s balance additionally. However, in the `transferFrom` function, which allows spender addresses to transfer tokens on behalf of the actual owner, the contract does not account for the fact that the total deducted amount (including fees) may exceed the approved allowance."
+    },
+    {
+      "title": "[M-02] Approve operation is not overridden to call `transferSanity`, thus its allowed to approve blacklisted accounts, which breaks protocol invariant",
+      "description": "The `approve()` function is not overridden and `transferSanity()` is not called for the operation. This invariant is broken by the protocol’s implementation, as there is no logic to enforce that the owner and spender are not blacklisted."
+    },
+    {
+      "title": "[M-03] Lack of deadline check in forwarded request",
+      "description": "Without a deadline parameter, each `ForwardRequest` is potentially valid indefinitely. This means that once a request is signed, it can be executed at any point in the future, provided that the nonce has not yet been used. This can lead to situations where the execution context has drastically changed from when the request was originally signed."
+    }
+  ]
+}

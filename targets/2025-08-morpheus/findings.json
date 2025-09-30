@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "title": "Same heartbeat for multiple price feeds is vulnerable",
+      "description": "`ChainLinkDataConsumer` uses the same heartbeat `allowedPriceUpdateDelay` for multiple feeds when checking if the data feed is fresh. The issue with this is that the USDC/USD oracle has a 24 hour heartbeat, whereas the average has a heartbeat of 1 hour. Since they use the same heartbeat, the heartbeat needs to be slower of the two or else the contract would be nonfunctional most of the time. The issue is that it would allow the consumption of potentially very stale data from the non-USDC feed."
+    },
+    {
+      "title": "Inconsistent balance accounting in stETH deposits leads to DOS of core functions and reward loss",
+      "description": "When stETH is staked, the `DepositPool::_stake()` function only stores the actual balance difference, which might be different from the amount that was provided for the transfer due to rounding down. This means that the actual transferred amount could be lower than the amount that the transfer operation was called with due to rounding down. Hence, the actual balance difference is used in `DepositPool::_stake()`. This leads to an issue in `Distributor::distributeRewards()` where this difference causes an underflow, leading to a denial of service (DOS) of `Distributor::distributeRewards()` and all functions that call it."
+    },
+    {
+      "title": "Protocol doesn’t properly handle Aave Pool changes",
+      "description": "`setAavePool` is used to set new aave pool address, presumably to handle pool changes, upgrades, or migration situations. However, the protocol doesn’t dynamically query the current pool address, leaving a window where the pool in use will be deprecated, leading to DOS issues until a new pool is set. Additionally, the missing approval revocation for the old pool and granting for the new one causes `supply`, `withdraw`, and `withdrawYield` calls for existing Aave-strategy deposit pools to fail due to missing approvals for the new pool."
+    },
+    {
+      "title": "Yield withdrawal blocked by zero reward early return",
+      "description": "When withdrawing yield, it is calculated as the difference between `lastUnderlyingBalance` and `deposited` for the given `depositPool`. However, if the calculated `rewards_` amount for the period is zero, the function returns early, preventing `lastUnderlyingBalance` from being updated. This causes the accounting system to fail to recognize newly accumulated yield, making it impossible to withdraw, and can lead to a permanent lock on any yield that accumulated after the reward distribution period ends."
+    }
+  ]
+}
